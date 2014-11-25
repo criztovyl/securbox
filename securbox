@@ -1,0 +1,114 @@
+#!/bin/bash
+#	 This is a wrapper program for run and mount SecurStick on linux, from commandline.
+#    Copyright (C) 2014 Christoph "criztovyl" Schulz
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+SBH=$HOME/.securbox # set securbox home
+SB_MOUNT_POINT=/media/securbox
+if [ ! -d $SBH ]; then
+    mkdir -p $SBH
+fi
+SO=$SBH/output # set output file
+RSP=$SBH/response # set response file
+SESTPATH=$SBH/securboxpath # path to executable
+if [ -z `which securstick` ] && [ -z $SECURSTICK ] && [ ! -f $SESTPATH ]; then
+    echo "No SecurStick executable found! Exiting!"
+    echo "Please add SecurStick to your path, set SECURSTICK envirnonment variable or write path into "$SESTPATH"! (Will use this order.)"
+    exit 1
+fi
+if [ ! -z `which securstick` ]; then
+    SEST=`which securstick`
+elif [ ! -z $SECURSTICK ]; then
+    SEST=$SECURSTICK
+elif [ -f $SESTPATH ]; then
+    SEST=`cat $SESTPATH`
+fi
+
+# get link from securbox output
+function getlink(){ 
+    link=`awk "{if (FNR == 5){print}}" $SO` # grep link from output file (line 5)
+    echo ${link/# /} # remove first white space
+}
+
+#unblock, need to get login page with image first to be allowed to post password
+function unblock(){
+    curl $1 > /dev/null # get login page
+    curl ${1/login/2.png} > /dev/null # get image
+}
+
+#start securbox
+function startSO(){
+    $SEST $SBH -NoBrowser -NoMount > $SO & #start securbox
+    pass=`getpass` # receive pass
+    link=`getlink` # receive link
+    unblock $link # unblock
+    unlock "$pass" $link #unlock
+    mount $SB_MOUNT_POINT # mount securbox
+}
+
+#kill all SecurStick instances
+function killSO(){
+    killall SecurStick-linux
+}
+
+#get password from user
+function getpass(){
+    q="Enter SecurBox Password"
+    case $SBPASSASK in
+        "zenity")
+            PASS=`zenity --title $q --password`
+            ;;
+        *|"readline")
+            read -sp "$q" PASS # get pass
+            ;;
+    esac
+    echo $PASS
+}
+
+#unlock box
+function unlock(){
+    curl --data-urlencode "P=$1" "$2""2" -o $RSP # send pass
+    status=`cat $RSP`
+    if [ "${status:32:19}" = "Safe Zone logged in" ]; then
+        echo "Loggen in:)"
+    else
+        echo "Failure."
+    fi
+}
+
+#stop box
+function stopSO(){
+    umount $SB_MOUNT_POINT # unmount securbox
+    curl ${1/login/"stop"} > /dev/null # stop securbox
+    rm -f $RSP
+}
+case $1 in
+    "kill")
+        killSO
+        ;;
+    "start")
+        echo `startSO`
+        ;;
+    "stop")
+        stopSO `getlink`
+        ;;
+    *|"help")
+        echo "Usage: [start|stop|kill|help]"
+        echo "start: starts your SecurBox and mount it; will ask for passphrase"
+        echo "stop: unmounts your SecurBox"
+        echo "kill: kill all instances of SecurStick"
+        echo "help: display this."
+        echo "ENVIRONMENT:"
+        echo "If \$SBPASSASK is set to 'zenity', a gui will be used to ask for passphrase. Otherwise bash read(line) will be used."
+esac
