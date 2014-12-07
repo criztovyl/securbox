@@ -14,26 +14,24 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-SBH=$HOME/.securbox # set securbox home
+#
+###Configuration Start###
+#
+##Set securbox home######
+SBH=$HOME/.securbox
+#
+##Set mounting point#####
 SB_MOUNT_POINT=/media/securbox
+#
+###Configuration End#####
+#No editing below this line needed :)
+
+#Create securbox home if not exists
 if [ ! -d $SBH ]; then
     mkdir -p $SBH
 fi
 SO=$SBH/output # set output file
 RSP=$SBH/response # set response file
-SESTPATH=$SBH/securboxpath # path to executable
-if [ -z `which securstick` ] && [ -z $SECURSTICK ] && [ ! -f $SESTPATH ]; then
-    echo "No SecurStick executable found! Exiting!"
-    echo "Please add SecurStick to your path, set SECURSTICK envirnonment variable or write path into "$SESTPATH"! (Will use this order.)"
-    exit 1
-fi
-if [ ! -z `which securstick` ]; then
-    SEST=`which securstick`
-elif [ ! -z $SECURSTICK ]; then
-    SEST=$SECURSTICK
-elif [ -f $SESTPATH ]; then
-    SEST=`cat $SESTPATH`
-fi
 
 # get link from securbox output
 function getlink(){ 
@@ -49,7 +47,9 @@ function unblock(){
 
 #start securbox
 function startSO(){
-    $SEST $SBH -NoBrowser -NoMount > $SO & #start securbox
+    cd $SBH
+    ./SecurStick-linux -NoBrowser -NoMount > $SO & #start securbox
+    cd -
     pass=`getpass` # receive pass
     link=`getlink` # receive link
     unblock $link # unblock
@@ -81,7 +81,7 @@ function unlock(){
     curl --data-urlencode "P=$1" "$2""2" -o $RSP # send pass
     status=`cat $RSP`
     if [ "${status:32:19}" = "Safe Zone logged in" ]; then
-        echo "Loggen in:)"
+        echo "Logged in:)"
     else
         echo "Failure."
     fi
@@ -110,5 +110,5 @@ case $1 in
         echo "kill: kill all instances of SecurStick"
         echo "help: display this."
         echo "ENVIRONMENT:"
-        echo "If \$SBPASSASK is set to 'zenity', a gui will be used to ask for passphrase. Otherwise bash read(line) will be used."
+        echo "If \$SBPASSASK is set to 'zenity', a zenity gui will be used to ask for passphrase. Otherwise bash \`read\` will be used. (Needs zenity to be installed)"
 esac

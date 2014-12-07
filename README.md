@@ -23,16 +23,25 @@ Optional also install zenity:
 ##SecurStick
 Go to [SecurStick Homepage](http://www.withopf.com/tools/securstick/) and download SecurStick and CryptUtil (for Linux ;) ).
 
+##securbox
+Clone this directory into your favourite directory  
+
+* via SSH with `git clone git@github.com:criztovyl/securbox.git` or
+* via HTTPS with `git clone https://github.com/criztovyl/securbox.git`
+
+
 #"Setup"
- * Choose a folder for your securbox
+ * Choose a folder for your securbox (default is `.securbox` in the user's home directory)
  * Extract SecurStick and CryptUtil into it
- * Copy `securbox` and `securstick` to PATH
+ * Include `securbox` into your PATH
  * First time you need to start `SecurStick-linux` manually and set up securbox password (simply double-click it)
    + Follow the orders given by SecurStick.
    + Stop manual when you are ready (self-explaining after you have set up your password)
  * Now you can add the securbox to fstab so that you can mount it as a normal user.
    - `http://127.0.0.1:2000/X /media/securbox davfs user,noauto 0 0`
    - the SecurStick DAV is not secured with user and password so you can simply add no user and password to the DAV secrets file: `/media/securbox                 ""            ""`
+   - you can use a different mounting point but then you have to change it also in the `securbox` file, same way as setting the home in the point below; look into line 24 instead of 21 ;)
+ * Open the `securbox` file and change the securbox home to the folder you've chosen in the first point (line 21; use `$HOME` instead of `~` to identify your home directory)
  * Now you can use `securbox` :)
 
 #Usage
