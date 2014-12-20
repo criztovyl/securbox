@@ -1,30 +1,31 @@
 #securbox - SecurStick Linux Wrapper
-securbox is a wrapper program to use SecurStick under linux, written as a bash script.
-It's able to connect to your SecurStick via commandline, completely without browser, and mount or unmount it.
+securbox is a wrapper program for SecurStick under Linux, written as a bash script.
+It's able to connect to your SecurStick via commandline, mount or unmount it and is able to set up the SecurStick Safe Zone.
 
 #Requirements
 * `davfs2` (`mount.davfs`) for mounting SecurStick webDAV share 
 * `awk` for get the address from output file (`awk` should be installed by default)
 * `cURL` to get pages and `POST` password.
+* `realpath` for getting absolute paths of the SecurBox home directory
 * SecurStick
 * Zenity can be used for asking for password by a GUI. (optimal)
 
 #Prerequisites
 
 ##Packages
-Install davfs and cURL packages (davfs2 and curl):
+Install davfs, realpath and cURL packages:
 
-    sudo apt-get install davfs2 curl
+    sudo apt-get install davfs2 realpath curl
 
 Optional also install zenity:
 
     sudo apt-get install zenity
 
 ##SecurStick
-Go to [SecurStick Homepage](http://www.withopf.com/tools/securstick/) and download SecurStick and CryptUtil (for Linux ;) ).
+Go to [SecurStick Homepage](http://www.withopf.com/tools/securstick/) and download SecurStick.
 
 ##securbox
-Clone this directory into your favourite directory  
+Clone this repository into a favourite directory  
 
 * via SSH with `git clone git@github.com:criztovyl/securbox.git` or
 * via HTTPS with `git clone https://github.com/criztovyl/securbox.git`
@@ -32,14 +33,11 @@ Clone this directory into your favourite directory
 
 #"Setup"
  * Choose a folder for your securbox (default is `.securbox` in the user's home directory)
- * Extract SecurStick and CryptUtil into it
+ * Extract SecurStick into it (if you only want to use it on Linux, take SecurStick-linux only)
  * Include `securbox` into your PATH
- * First time you need to start `SecurStick-linux` manually and set up securbox password (simply double-click it)
-   + Follow the orders given by SecurStick.
-   + Stop manual when you are ready (self-explaining after you have set up your password)
- * Now you can add the securbox to fstab so that you can mount it as a normal user.
-   - `http://127.0.0.1:2000/X /media/securbox davfs user,noauto 0 0`
-   - the SecurStick DAV is not secured with user and password so you can simply add no user and password to the DAV secrets file: `/media/securbox                 ""            ""`
+ * Now you should add the securbox to fstab so that you can mount it as a normal user.
+   - Add `http://127.0.0.1:2000/X /media/securbox davfs user,noauto 0 0` to your `/etc/fstab` file (`sudo vim /etc/fstab`)
+   - the SecurStick DAV is not secured with user and password so you can simply add no user and password to the DAV secrets file (`~/.davfs2/secrets)`: `/media/securbox                 ""            ""`
    - you can use a different mounting point but then you have to change it also in the `securbox` file, same way as setting the home in the point below; look into line 24 instead of 21 ;)
  * Open the `securbox` file and change the securbox home to the folder you've chosen in the first point (line 21; use `$HOME` instead of `~` to identify your home directory)
  * Now you can use `securbox` :)
@@ -49,38 +47,38 @@ Clone this directory into your favourite directory
 
      securbox start
 
-into your commandline and enter your password. You will see some cURL progress and after that a mount (if you get timeout messages you can ignore them, it will work anyway) and a "Logged in:)" Message.
-Example:
+into your command line. If you havn't set up your securbox, this will be done immediately as shown below.
 
-    Enter SecurBox Password:
-      % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                     Dload  Upload   Total   Spent    Left  Speed
-    100   814    0   814    0     0   462k      0 --:--:-- --:--:-- --:--:--  794k
-      % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                     Dload  Upload   Total   Spent    Left  Speed
-      0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
-      % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                     Dload  Upload   Total   Spent    Left  Speed
-    100   994    0   949  100    45    183      8  0:00:05  0:00:05 --:--:--   227
-    Logged in:)
+    Please set a new password for your securbox with at least 5 letters, both UPPER and lower case, at least one digit and at least one special character (like !,?,#).
+    Enter password  : 
+    Repeat password : 
+
+If your passwords match and are strong enough, securbox will set up the Safe Zone and log in:
+
+    Please set a new password for your securbox with at least 5 letters, both UPPER and lower case, at least one digit and at least one special character (like !,?,#).
+    Enter password  : 
+    Repeat password : 
+    Logged in :)
+    Mounted.
+
+Sometimes you will get `/sbin/mount.davfs: connection timed out two times;
+trying one last time
+/sbin/mount.davfs: server temporarily unreachable;
+mounting anyway` but it will work anyway :)
 
 If you want to close down the securbox, type:
 
     securbox stop
 
 This will unmount your securbox and stop it. May you will see mount waiting for synchronsation of the cache, simply wait.
-After that there is again a cURL progress and then it will be over^^
 Example (with cache wait):
 
     /sbin/umount.davfs: waiting while mount.davfs (pid 13987) synchronizes the cache .. OK
-      % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                     Dload  Upload   Total   Spent    Left  Speed
-    100   484    0   484    0     0   409k      0 --:--:-- --:--:-- --:--:--  472k
 
 #Meta
 
 ##Background
-I'm using SecurStick to carry my "top-secrect" stuff with me in my Dropbox.
+I'm using SecurStick to carry my "top secrect" stuff with me in my Dropbox.
 
 The early time, I simply started the SecurStick with a ugly double-click (as if we wold be in Windows...) and then SecurStick mounts to Nautilus.
 
@@ -96,13 +94,11 @@ I've found no documentation about SecurStick command line usage so I search the 
 After that I found out, that you can't simply POST password and unlock SecurStick, you have to GET the index and the image first.
 
 ###ToDo
- * Password newline
  * PATH independency
- * Set up from command line
 
 ###Changelog
- * 25.11.2014
-   - Initiated
+ * 21.12.2014 Improvements: Safe Zone setup, removes cURL progressess and adds new lines after asking password.
+ * 25.11.2014 Initiated
 
 ##License
 This Project is licensed under GPLv3 or newer. See gpl.txt for details.

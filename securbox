@@ -26,82 +26,175 @@ SB_MOUNT_POINT=/media/securbox
 ###Configuration End#####
 #No editing below this line needed :)
 
-#Create securbox home if not exists
+#Make paths absolute
+SBH=`realpath $SBH`
+SB_MOUNT_POINT=`realpath $SB_MOUNT_POINT`
+
+#Set output, respond and running files
+SO=$SBH/output
+RSP=$SBH/response
+RNG=$SBH/.running
+
+#Create folders and files if not exists
 if [ ! -d $SBH ]; then
     mkdir -p $SBH
 fi
-SO=$SBH/output # set output file
-RSP=$SBH/response # set response file
+if [ ! -d $SB_MOUNT_POINT ]; then
+    mkdir -p $SB_MOUNT_POINT
+fi
+if [ ! -f $SO ]; then
+    touch $SO
+fi
+if [ ! -f $RSP ]; then
+    touch $RSP
+fi
+
+#Commands
+CURL="curl -s"
+
+#Functions
 
 # get link from securbox output
+# args: linkvar
 function getlink(){ 
-    link=`awk "{if (FNR == 5){print}}" $SO` # grep link from output file (line 5)
-    echo ${link/# /} # remove first white space
+    local _linkvar=$1
+    local _linkvalue=`awk "{if (FNR == 5){print}}" $SO` # grep link from output file (line 5)
+    _linkvalue=${_linkvalue/# /} # remove first white space
+    eval $_linkvar="'$_linkvalue'"
 }
 
 #unblock, need to get login page with image first to be allowed to post password
+#args: link
 function unblock(){
-    curl $1 > /dev/null # get login page
-    curl ${1/login/2.png} > /dev/null # get image
+    $CURL $1 > /dev/null # get login page
+    $CURL ${1/login/2.png} > /dev/null # get image
 }
 
 #start securbox
+#no args
 function startSO(){
-    cd $SBH
-    ./SecurStick-linux -NoBrowser -NoMount > $SO & #start securbox
-    cd -
-    pass=`getpass` # receive pass
-    link=`getlink` # receive link
-    unblock $link # unblock
-    unlock "$pass" $link #unlock
-    mount $SB_MOUNT_POINT # mount securbox
+    
+    #Get SecurStick PID and check if isn't dead
+    _rngid=`cat $RNG`
+    if [ -f $RNG ]; then
+        if [ `ps --pid 4877 -o pid --no-header | wc -l` == 0 ]; then
+            rm -f $RNG
+        fi
+    fi
+    if [ ! -f $RNG ]; then
+        cd $SBH
+        ./SecurStick-linux -NoBrowser -NoMount > $SO & #start securbox
+        cd - > /dev/null # change back (sending to /dev/null to prevent output of PWD)
+       echo $! > $SBH/.running
+    fi
+    getlink link # receive link
+    checkCreate create # check whether SecurStick Safe Zone need to be created
+    if [ $create == 0 ]; then # if yes, receive password (with repetition)
+        echo "Please set a new password for your securbox with at least 5 letters, both UPPER and lower case, at least one digit and at least one special character (like !,?,#)."
+        getpass pass1 "Enter password  : "
+        getpass pass2 "Repeat password : "
+        #echo "!"
+        if [ "$pass1" == "$pass2" ]; then # if passwords are equal, send to SecurStick
+            getlink _link
+            _resp=`$CURL ${_link/login/create} --data "P1=$pass1" --data "P2=$pass2" --data "EFN=1"` # Send and receive response
+            if [ "${_resp:19:29}" == "SecurStick - Password unsafe!" ]; then # Request user to retry if password is not safe
+                echo "Unsafe password, please retry!"
+            elif [ "${_resp:19:32}" == "SecurStick - Safe Zone logged in" ]; then # Mount if successfully created Safe Zone
+                echo "Logged in :)"
+                mount $SB_MOUNT_POINT # mount securbox
+                echo "Mounted."
+            else
+                echo "Invalid response."
+            fi
+        else
+            echo "Passwords doesn't match, please retry!"
+        fi
+    else
+        getpass pass "Enter SecurBox password: " # receive pass
+        unblock $link # unblock
+        unlock success "$pass" $link #unlock
+        echo $success
+        #mount only if unlocking was successfull
+        if [ $success == 0 ]; then
+            echo "Logged in:)"
+            mount $SB_MOUNT_POINT # mount securbox
+            echo "Mounted."
+        else
+            echo "Can't unlock, maybe wrong password?"
+        fi
+    fi
 }
 
 #kill all SecurStick instances
+#no args
 function killSO(){
-    killall SecurStick-linux
+    rm -f $SBH/.running
+    killall -w SecurStick-linux
 }
 
 #get password from user
+#args: passvar prompt
+#  passvar: name for variable the password should be stored in
+#  promt: the promt text
 function getpass(){
-    q="Enter SecurBox Password"
+    local _passvar=$1
+    local _p=$2
     case $SBPASSASK in
         "zenity")
-            PASS=`zenity --title $q --password`
+            _PASS=`zenity --title $_p --password`
             ;;
         *|"readline")
-            read -sp "$q" PASS # get pass
+            read -sp "$_p" _PASS # get pass
+            echo
             ;;
     esac
-    echo $PASS
+    eval $_passvar="'$_PASS'"
 }
 
 #unlock box
+#args: status password link
 function unlock(){
-    curl --data-urlencode "P=$1" "$2""2" -o $RSP # send pass
+    _statusvar=$1
+    _pass=$2
+    _link=$3
+    curl --data-urlencode "P=$_pass" "$_link""2" -o $RSP # send pass
     status=`cat $RSP`
     if [ "${status:32:19}" = "Safe Zone logged in" ]; then
-        echo "Logged in:)"
+        eval $_statusvar=0
     else
-        echo "Failure."
+        eval $_statusvar=1
     fi
 }
 
 #stop box
+#no args
 function stopSO(){
+    getlink _link
     umount $SB_MOUNT_POINT # unmount securbox
-    curl ${1/login/"stop"} > /dev/null # stop securbox
-    rm -f $RSP
+    $CURL ${_link/login/"stop"} > /dev/null # stop securbox
+    rm -f $RSP $SBH/.running
+}
+#check if need to create Safe Zone
+#args: status
+function checkCreate(){
+    _statusvar=$1
+    getlink _link
+    _page=`$CURL $_link`
+    if [ "${_page:32:16}" == "Create Safe Zone" ];then
+        eval $_statusvar=0
+    else
+        eval $_statusvar=1
+    fi
 }
 case $1 in
     "kill")
         killSO
         ;;
     "start")
-        echo `startSO`
+        startSO
         ;;
     "stop")
-        stopSO `getlink`
+        stopSO
         ;;
     *|"help")
         echo "Usage: [start|stop|kill|help]"
