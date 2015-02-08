@@ -75,8 +75,8 @@ function unblock(){
 function startSO(){
     
     #Get SecurStick PID and check if isn't dead
-    _rngid=`cat $RNG`
     if [ -f $RNG ]; then
+    _rngid=`cat $RNG`
         if [ `ps --pid 4877 -o pid --no-header | wc -l` == 0 ]; then
             rm -f $RNG
         fi
@@ -84,6 +84,9 @@ function startSO(){
     if [ ! -f $RNG ]; then
         cd $SBH
         ./SecurStick-linux -NoBrowser -NoMount > $SO & #start securbox
+        echo "Waiting 3 secs for SecurStick startup..."
+        sleep 3
+        echo "Continue..."
         cd - > /dev/null # change back (sending to /dev/null to prevent output of PWD)
        echo $! > $SBH/.running
     fi
