@@ -110,7 +110,7 @@ After that I found out, that you can't simply POST password and unlock SecurStic
  * make useable off commandline (Zenity)
 
 ###Changelog
- * 08.02.2014
+ * 08.02.2015
    - Improvement: Wait a moment to let SecurStick start
    - Repair a mistake (`cat` PID-file before check if it exits)
    - Improved README

@@ -1,6 +1,6 @@
 #!/bin/bash
 #	 This is a wrapper program for run and mount SecurStick on linux, from commandline.
-#    Copyright (C) 2014 Christoph "criztovyl" Schulz
+#    Copyright (C) 2014 , 2015 Christoph "criztovyl" Schulz
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
