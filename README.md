@@ -116,6 +116,7 @@ After that I found out, that you can't simply POST password and unlock SecurStic
  * make useable off commandline (Zenity)
 
 ###Changelog
+<<<<<<< HEAD
 
  * 18.03.2014
    - Bugfix: Dead SecurStick instance from PID-file is now detected correctly, previously death-check was traped inside file existance check. 
@@ -127,7 +128,7 @@ After that I found out, that you can't simply POST password and unlock SecurStic
    - Bugfix: PID wasn't read from PID-file.
    - Fixes some indenting
    - Adds the countdown as a function
- * 08.02.2014
+ * 08.02.2015
    - Improvement: Wait a moment to let SecurStick start
    - Repair a mistake (`cat` PID-file before check if it exits)
    - Improved README
