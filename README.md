@@ -52,7 +52,10 @@ into your command line. If you havn't set up your securbox, this will be done im
 
 Meanwhile securbox will start but the script needs to wait some seconds (3) to let SecurStick start up. So the following output is normal:
 
-    Waiting 3 secs for SecurStick startup...
+    Waiting for SecurStick startup...
+    3 seconds remaining...
+    2 seconds remaining...
+    1 seconds remaining...
     Continue...
 
 This will not happen every time because SecurStick maybe already running, as example if you entered the wrong password.
@@ -86,6 +89,9 @@ This will unmount your securbox and stop it. Maybe you will see `mount` waiting 
 
     /sbin/umount.davfs: waiting while mount.davfs (pid 13987) synchronizes the cache .. OK
 
+#Troubleshooting
+
+If your files in the webDAV folder are not accessable, stop and kill securbox (with `securbox stop` and `securbox kill`) and try again.
 #Meta
 
 ##Background
@@ -110,6 +116,17 @@ After that I found out, that you can't simply POST password and unlock SecurStic
  * make useable off commandline (Zenity)
 
 ###Changelog
+
+ * 18.03.2014
+   - Bugfix: Dead SecurStick instance from PID-file is now detected correctly, previously death-check was traped inside file existance check. 
+   - Improves zenity (development will be continued on zenity-dev branch)
+ * 13.02.2014
+   - Improvements
+      + Countdown while wait for SecurStick start
+      + Only single SecurStick/securbox instance can run (until multiple securboxes are supported)
+   - Bugfix: PID wasn't read from PID-file.
+   - Fixes some indenting
+   - Adds the countdown as a function
  * 08.02.2014
    - Improvement: Wait a moment to let SecurStick start
    - Repair a mistake (`cat` PID-file before check if it exits)

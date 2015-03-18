@@ -75,28 +75,30 @@ function unblock(){
 function startSO(){
     
     #Get SecurStick PID and check if isn't dead
-    if [ -f $RNG ]; then
     _rngid=`cat $RNG`
-        if [ `ps --pid 4877 -o pid --no-header | wc -l` == 0 ]; then
-            rm -f $RNG
-        fi
+    if [ `ps --pid $_rngid -o pid --no-header | wc -l` == 0 ]; then
+        rm -f $RNG
+        echo "SecurStick is dead. Starting new instance"
     fi
-    if [ ! -f $RNG ]; then
+    if [ -f $RNG ]; then
+            echo "SecurStick seems to run already, skipping start."
+    elif [[ `ps aux | grep -x grep | grep "SecurStick-linux" | wc -l` > 1 ]]; then
+        echo "There is already a running SecurStick instance."
+    else
         cd $SBH
         ./SecurStick-linux -NoBrowser -NoMount > $SO & #start securbox
-        echo "Waiting 3 secs for SecurStick startup..."
-        sleep 3
+        echo "Waiting for SecurStick startup..."
+        sleepSecs 3 "%t seconds remaining..."
         echo "Continue..."
         cd - > /dev/null # change back (sending to /dev/null to prevent output of PWD)
        echo $! > $SBH/.running
-    fi
-    getlink link # receive link
-    checkCreate create # check whether SecurStick Safe Zone need to be created
-    if [ $create == 0 ]; then # if yes, receive password (with repetition)
-        echo "Please set a new password for your securbox with at least 5 letters, both UPPER and lower case, at least one digit and at least one special character (like !,?,#)."
+   fi
+   getlink link # receive link
+   checkCreate create # check whether SecurStick Safe Zone need to be created
+   if [ $create == 0 ]; then # if yes, receive password (with repetition)
+       echo "Please set a new password for your securbox with at least 5 letters, both UPPER and lower case, at least one digit and at least one special character (like !,?,#)."
         getpass pass1 "Enter password  : "
         getpass pass2 "Repeat password : "
-        #echo "!"
         if [ "$pass1" == "$pass2" ]; then # if passwords are equal, send to SecurStick
             getlink _link
             _resp=`$CURL ${_link/login/create} --data "P1=$pass1" --data "P2=$pass2" --data "EFN=1"` # Send and receive response
@@ -114,16 +116,19 @@ function startSO(){
         fi
     else
         getpass pass "Enter SecurBox password: " # receive pass
-        unblock $link # unblock
-        unlock success "$pass" $link #unlock
-        echo $success
-        #mount only if unlocking was successfull
-        if [ $success == 0 ]; then
-            echo "Logged in:)"
-            mount $SB_MOUNT_POINT # mount securbox
-            echo "Mounted."
+        if [ "$pass" == "1" ]; then
+            echo "Pressed cancel..."
         else
-            echo "Can't unlock, maybe wrong password?"
+            unblock $link # unblock
+             unlock success "$pass" $link #unlock
+            #mount only if unlocking was successfull
+            if [ $success == 0 ]; then
+                echo "Logged in:)"
+                mount $SB_MOUNT_POINT # mount securbox
+                echo "Mounted."
+            else
+                echo "Can't unlock, maybe wrong password?"
+            fi
         fi
     fi
 }
@@ -144,7 +149,7 @@ function getpass(){
     local _p=$2
     case $SBPASSASK in
         "zenity")
-            _PASS=`zenity --title $_p --password`
+            _PASS=`zenity --forms --title "securbox" --text "Unlock securbox" --add-password "$_p"`
             ;;
         *|"readline")
             read -sp "$_p" _PASS # get pass
@@ -160,7 +165,7 @@ function unlock(){
     _statusvar=$1
     _pass=$2
     _link=$3
-    curl --data-urlencode "P=$_pass" "$_link""2" -o $RSP # send pass
+    $CURL --data-urlencode "P=$_pass" "$_link""2" -o $RSP # send pass
     status=`cat $RSP`
     if [ "${status:32:19}" = "Safe Zone logged in" ]; then
         eval $_statusvar=0
@@ -189,6 +194,24 @@ function checkCreate(){
         eval $_statusvar=1
     fi
 }
+#sleeps some seconds and print status
+#can set message (msg), use %t to use remaining seconds
+#args: seconds msg
+function sleepSecs(){
+#Receive message
+_msg=$2
+#Loop
+for (( _secs=$1; $_secs; $((_secs--)) )); do
+    #Check if message is set
+    if [[ "$_msg" ]]; then
+        #Replace %n with current seconds and echo
+        echo ${_msg//"%t"/$_secs}
+    fi
+    #Sleep one second
+    sleep 1
+done
+}
+#Run
 case $1 in
     "kill")
         killSO
@@ -208,3 +231,4 @@ case $1 in
         echo "ENVIRONMENT:"
         echo "If \$SBPASSASK is set to 'zenity', a zenity gui will be used to ask for passphrase. Otherwise bash \`read\` will be used. (Needs zenity to be installed)"
 esac
+
