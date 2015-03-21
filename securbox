@@ -75,23 +75,28 @@ function unblock(){
 function startSO(){
     
     #Get SecurStick PID and check if isn't dead
-    _rngid=`cat $RNG`
-    if [ `ps --pid $_rngid -o pid --no-header | wc -l` == 0 ]; then
-        rm -f $RNG
-        echo "SecurStick is dead. Starting new instance"
-    fi
     if [ -f $RNG ]; then
+        _rngid=`cat $RNG` # get PID
+        if [ `ps --pid $_rngid -o pid --no-header | wc -l` == 0 ]; then
+            # SecurStick is dead. Remove PID file.
+            rm -f $RNG
+            echo "SecurStick is dead. Starting new instance"
+        fi
+    fi
+
+    # Check whether need to start SecurStick
+    if [ -f $RNG ]; then # check if SecurStick is running already
             echo "SecurStick seems to run already, skipping start."
-    elif [[ `ps aux | grep -x grep | grep "SecurStick-linux" | wc -l` > 1 ]]; then
+    elif [[ `ps aux | grep -x grep | grep "SecurStick-linux" | wc -l` > 1 ]]; then # check if an other SecurStick is running we don't get
         echo "There is already a running SecurStick instance."
-    else
-        cd $SBH
+    else # if not, start SecurStick
+        cd $SBH # securbox dir
         ./SecurStick-linux -NoBrowser -NoMount > $SO & #start securbox
         echo "Waiting for SecurStick startup..."
-        sleepSecs 3 "%t seconds remaining..."
+        sleepSecs 3 "%t seconds remaining..." # sleep three seconds to let SecurStick start up
         echo "Continue..."
         cd - > /dev/null # change back (sending to /dev/null to prevent output of PWD)
-       echo $! > $SBH/.running
+        echo $! > $SBH/.running # send SecurStick PID to PID file
    fi
    getlink link # receive link
    checkCreate create # check whether SecurStick Safe Zone need to be created
