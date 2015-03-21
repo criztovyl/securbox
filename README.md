@@ -32,14 +32,18 @@ Clone this repository into a favourite directory
 
 
 #"Setup"
+ * In these steps I use `vim`, if you don't want to use `vim`, replace it with `nano`.
  * Choose a folder for your securbox (default is `.securbox` in the user's home directory)
  * Extract SecurStick into it (if you only want to use it on Linux, take SecurStick-linux only)
- * If you want to be able to start your securbox from every dir, include `securbox` into your PATH. (Add `export PATH=$PATH:/path/to/securbox` to your `.bashrc`)  
+ * If you want to be able to start your securbox from every dir, include `securbox` into your PATH. (Add `export PATH=$PATH:/path/to/securbox-dir` to your `.bashrc`)  
    TODO: Multiple securboxes.
  * Now you should add the securbox to fstab so that you can mount it as a normal user.
-   - Add `http://127.0.0.1:2000/X /media/securbox davfs user,noauto 0 0` to your `/etc/fstab` file (`sudo vim /etc/fstab`)
-   - the SecurStick DAV is not secured with user and password so you can simply add no user and password to the DAV secrets file (`~/.davfs2/secrets`): `/media/securbox                 ""            ""`
-   - you can use a different mounting point but then you have to change it also in the `securbox` file, same way as setting the home in the point below; look into line 24 instead of 21 ;)
+   - We're doing this by adding securbox to `fstab`, setting up the davfs2 secrets file, fixing a `mount.davfs` bug and adding the user to the `davfs2` group.
+   - Add `http://127.0.0.1:2000/X /media/securbox davfs user,noauto 0 0` to your `/etc/fstab` file (`sudo vim /etc/fstab`)  
+   (you can use a different mounting point but then you have to change it also in the `securbox` file, same way as setting the home in the point below, but look into line 24 instead of 21 ;) )
+   - the SecurStick DAV is not secured with user and password so you can simply add no user and password to the DAV secrets file (`vim ~/.davfs2/secrets`): `/media/securbox                 ""            ""`
+   - There is a bug in mount.davfs when not mounting as a root user, telling you `program is not setuid root`. Fix this using `sudo chmod u+s /sbin/mount.davfs`
+   - Add your user to `davfs2` group: `sudo adduser $USER davfs2`
  * Open the `securbox` file and change the securbox home to the folder you've chosen in the first point (line 21; use `$HOME` instead of `~` to identify your home directory)
  * Now you can use `securbox` :)
 
@@ -92,6 +96,7 @@ This will unmount your securbox and stop it. Maybe you will see `mount` waiting 
 #Troubleshooting
 
 If your files in the webDAV folder are not accessable, stop and kill securbox (with `securbox stop` and `securbox kill`) and try again.
+
 #Meta
 
 ##Background
@@ -116,7 +121,6 @@ After that I found out, that you can't simply POST password and unlock SecurStic
  * make useable off commandline (Zenity)
 
 ###Changelog
-<<<<<<< HEAD
 
  * 18.03.2014
    - Bugfix: Dead SecurStick instance from PID-file is now detected correctly, previously death-check was traped inside file existance check. 
