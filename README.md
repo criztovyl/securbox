@@ -77,7 +77,7 @@ If your passwords match and are strong enough, securbox will set up the Safe Zon
     Logged in :)
     Mounted.
 
-Sometimes you will get the below messages, but it should work anyway.
+Sometimes you will get the below messages. If you get them something went wrong. Kill securbox with `securbox kill` and then restart with `securbox start`.
 
     /sbin/mount.davfs: connection timed out two times;
     trying one last time
@@ -124,7 +124,7 @@ After that I found out, that you can't simply POST password and unlock SecurStic
 
  * 18.03.2014
    - Bugfix: Dead SecurStick instance from PID-file is now detected correctly, previously death-check was traped inside file existance check. 
-   - Improves zenity (development will be continued on zenity-dev branch)
+   - Improves zenity (development will be continued on zenity-dev branch soon)
  * 13.02.2014
    - Improvements
       + Countdown while wait for SecurStick start
