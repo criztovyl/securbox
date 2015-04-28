@@ -50,21 +50,37 @@ if [ ! -f $RSP ]; then
 fi
 
 #Commands
-CURL="curl -s"
+CURL="/usr/bin/curl -s"
+ZENITY="/usr/bin/zenity"
+
+#Exit codes
+EX_ERR=1
+EX_CANCEL=2
+EX_WRONG_PW=3
+EX_PW_MISSM=4
+EX_UNSAFE_PW=5
+EX_INV_RESP=6
+EX_ALREADY_THERE=7
+EX_LINK_ERR=8
 
 #Functions
 
 # get link from securbox output
 # args: linkvar
+#  linkvar: variable link to store in
 function getlink(){ 
     local _linkvar=$1
     local _linkvalue=`awk "{if (FNR == 5){print}}" $SO` # grep link from output file (line 5)
     _linkvalue=${_linkvalue/# /} # remove first white space
+    if [ ! "$_linkvalue" == "http://127.0.0.1:2000/login" ]; then
+        sendErr "Link Error, maybe there is another SecurStick instance running, please kill it first." $EX_LINK_ERR
+    fi
     eval $_linkvar="'$_linkvalue'"
 }
 
 #unblock, need to get login page with image first to be allowed to post password
 #args: link
+#  link: Safe Zone login link
 function unblock(){
     $CURL $1 > /dev/null # get login page
     $CURL ${1/login/2.png} > /dev/null # get image
@@ -73,6 +89,11 @@ function unblock(){
 #start securbox
 #no args
 function startSO(){
+    #Check if securbox is already mounted
+    if [ `mount | grep /media/securbox | wc -l` -ge 1 ]; then
+        sendMsg "Securbox is already mounted :)" 2
+        exit $EX_ALREADY_THERE
+    fi
     
     #Get SecurStick PID and check if isn't dead
     if [ -f $RNG ]; then
@@ -80,61 +101,41 @@ function startSO(){
         if [ `ps --pid $_rngid -o pid --no-header | wc -l` == 0 ]; then
             # SecurStick is dead. Remove PID file.
             rm -f $RNG
-            echo "SecurStick is dead. Starting new instance"
+            sendMsg "SecurStick is dead. Will start new instance" 2
         fi
     fi
 
     # Check whether need to start SecurStick
     if [ -f $RNG ]; then # check if SecurStick is running already
-            echo "SecurStick seems to run already, skipping start."
+            sendMsg "SecurStick seems to run already, skipping start." 2
     elif [[ `ps aux | grep -x grep | grep "SecurStick-linux" | wc -l` > 1 ]]; then # check if an other SecurStick is running we don't get
-        echo "There is already a running SecurStick instance."
+        sendMsg "There is already a running SecurStick instance." 2
     else # if not, start SecurStick
         cd $SBH # securbox dir
         ./SecurStick-linux -NoBrowser -NoMount > $SO & #start securbox
-        echo "Waiting for SecurStick startup..."
-        sleepSecs 3 "%t seconds remaining..." # sleep three seconds to let SecurStick start up
-        echo "Continue..."
+        sleepSecs 3 "Waiting %t seconds for SecurStick startup..." "%t second(s) remaining..." "Continuing..." # sleep three seconds to let SecurStick start up
         cd - > /dev/null # change back (sending to /dev/null to prevent output of PWD)
         echo $! > $SBH/.running # send SecurStick PID to PID file
    fi
    getlink link # receive link
    checkCreate create # check whether SecurStick Safe Zone need to be created
-   if [ $create == 0 ]; then # if yes, receive password (with repetition)
-       echo "Please set a new password for your securbox with at least 5 letters, both UPPER and lower case, at least one digit and at least one special character (like !,?,#)."
-        getpass pass1 "Enter password  : "
-        getpass pass2 "Repeat password : "
-        if [ "$pass1" == "$pass2" ]; then # if passwords are equal, send to SecurStick
-            getlink _link
-            _resp=`$CURL ${_link/login/create} --data "P1=$pass1" --data "P2=$pass2" --data "EFN=1"` # Send and receive response
-            if [ "${_resp:19:29}" == "SecurStick - Password unsafe!" ]; then # Request user to retry if password is not safe
-                echo "Unsafe password, please retry!"
-            elif [ "${_resp:19:32}" == "SecurStick - Safe Zone logged in" ]; then # Mount if successfully created Safe Zone
-                echo "Logged in :)"
-                mount $SB_MOUNT_POINT # mount securbox
-                echo "Mounted."
-            else
-                echo "Invalid response."
-            fi
-        else
-            echo "Passwords doesn't match, please retry!"
-        fi
-    else
-        getpass pass "Enter SecurBox password: " # receive pass
-        if [ "$pass" == "1" ]; then
-            echo "Pressed cancel..."
-        else
-            unblock $link # unblock
-             unlock success "$pass" $link #unlock
-            #mount only if unlocking was successfull
-            if [ $success == 0 ]; then
-                echo "Logged in:)"
-                mount $SB_MOUNT_POINT # mount securbox
-                echo "Mounted."
-            else
-                echo "Can't unlock, maybe wrong password?"
-            fi
-        fi
+   if [ $create == 0 ]; then # if yes, receive password
+       getpass 1
+   else
+       getpass pass "Enter SecurBox password: " # receive pass
+
+       exitOnErr $? $EX_CANCEL
+
+       unblock $link # unblock
+       unlock success "$pass" $link #unlock
+       #mount only if unlocking was successfull
+       if [ $success == 0 ]; then
+           sendMsg "Logged in:)" 2
+           mount $SB_MOUNT_POINT # mount securbox
+           sendMsg "Mounted." 2
+       else
+           sendErr "Can't unlock, maybe wrong password?" $EX_WRONG_PW
+       fi
     fi
 }
 
@@ -146,26 +147,94 @@ function killSO(){
 }
 
 #get password from user
+#can be used to set password to Safe Zone (set passvar=1)
 #args: passvar prompt
 #  passvar: name for variable the password should be stored in
 #  promt: the promt text
 function getpass(){
     local _passvar=$1
     local _p=$2
-    case $SBPASSASK in
+    local _set=$3
+    case $SBGUI in
         "zenity")
-            _PASS=`zenity --forms --title "securbox" --text "Unlock securbox" --add-password "$_p"`
+            case $_passvar in
+                "1")
+                    #Open Zenity and ask for new password
+                    _RESP=`$ZENITY --forms \
+                    --text "Please set a new password for your securbox with at least 5 letters, both UPPER and lower case, at least one digit and at least one special character like !, ?, #, it's required by SecurStick." \
+                    --add-password="Enter new Password" --add-password="Repeat Password"`
+
+                    exitOnErr $? $EX_CANCEL
+
+                    #Split response
+                    IFS="|" read -a _PASSs <<<"$RESP"
+                    #Check array
+                    if [ ${#_PASSs[@]} -eq 2 ]; then
+                        #Receive passwords
+                        _pass1=$_PASSs[1]
+                        _pass2=$_PASSs[2]
+                        #Check whether passwords are equal
+                        [ "$_pass1" == "$_pass2" ]
+                        exitOnErr $? $EX_PASSW_MISM
+
+                        getlink _link
+                        _resp=`$CURL ${_link/login/create} --data "P1=$pass1" --data "P2=$pass2" --data "EFN=1"` # Send and receive response
+                        if [ "${_resp:19:29}" == "SecurStick - Password unsafe!" ]; then # Request user to retry if password is not safe
+                            sendErr "Unsafe password, please retry!"
+                        elif [ "${_resp:19:32}" == "SecurStick - Safe Zone logged in" ]; then # Mount if successfully created Safe Zone
+                            sendMsg "Logged in :)"
+                            mount $SB_MOUNT_POINT # mount securbox
+                            sendMsg "Mounted."
+                        else
+                            sendErr "Invalid response."
+                        fi
+                    else #Exit on problem
+                        sendErr "Password form wasn't filled correctly, please reopen securbox and try again." 5
+                    fi
+                    ;;
+                *)
+                    _PASS=`$ZENITY --password --title "securbox" --text "Unlock securbox" --add-password "$_p"`
+                    exitOnErr $? $EX_CANCEL
+                    ;;
+            esac
             ;;
-        *|"readline")
-            read -sp "$_p" _PASS # get pass
-            echo
+        *|"cli")
+            if [ "$_passvar" == 1 ]; then
+                #Receive passwords
+                read -sp "Enter new pasword: " _pass1
+                read -sp "Repeat password: " _pass2
+                #Check whether passwords are equal
+                if [ "$_pass1" == "$_pass2" ]; then #Try to set up if equal
+                    getlink _link
+                    _resp=`$CURL ${_link/login/create} --data "P1=$pass1" --data "P2=$pass2" --data "EFN=1"` # Send and receive response
+                    if [ "${_resp:19:29}" == "SecurStick - Password unsafe!" ]; then # Request user to retry if password is not safe
+                        sendErr "Unsafe password, please retry!" $EX_UNSAFE_PW
+                    elif [ "${_resp:19:32}" == "SecurStick - Safe Zone logged in" ]; then # Mount if successfully created Safe Zone
+                        sendMsg "Logged in :)"
+                        mount $SB_MOUNT_POINT # mount securbox
+                        sendMsg "Mounted."
+                    else
+                        sendErr "Invalid response." $EX_INV_RESP
+                    fi
+                else
+                    sendErr "Passwords didn't match, please reopen securbox and try again." $EX_PASSW_MISM
+                fi
+            else
+                read -sp "$_p" _PASS # get pass
+                echo
+            fi
             ;;
     esac
-    eval $_passvar="'$_PASS'"
+    if [ "$_PASS" ]; then
+        eval $_passvar="'$_PASS'"
+    fi
 }
 
 #unlock box
 #args: status password link
+#  status: status variable name
+#  password: Safe Zone password
+#  link: SecurStick login link
 function unlock(){
     _statusvar=$1
     _pass=$2
@@ -189,6 +258,7 @@ function stopSO(){
 }
 #check if need to create Safe Zone
 #args: status
+#  status: status variable name
 function checkCreate(){
     _statusvar=$1
     getlink _link
@@ -200,21 +270,134 @@ function checkCreate(){
     fi
 }
 #sleeps some seconds and print status
-#can set message (msg), use %t to use remaining seconds
-#args: seconds msg
+#can set pre, second and post messages
+#In pre %t will replaced with duration,
+#in second message %t will replaced with the remaining seconds.
+#You can use either duration and second args or you have to use all four.
+#args: duration pre second post
+#  duration: seconds to wait
+#  pre: message shown before loop
+#  second: message display each second
+#  post: message show after loop
 function sleepSecs(){
-#Receive message
-_msg=$2
-#Loop
-for (( _secs=$1; $_secs; $((_secs--)) )); do
-    #Check if message is set
-    if [[ "$_msg" ]]; then
-        #Replace %n with current seconds and echo
-        echo ${_msg//"%t"/$_secs}
-    fi
-    #Sleep one second
-    sleep 1
-done
+#Arguments
+if [ $# == 2 ]; then
+    #Receive duration and message
+    _dur=$1
+    _msg=$2
+elif [ $# == 4 ]; then
+    #Receive duration and messages
+    _dur=$1
+    _pre=$2
+    _sec=$3
+    _post=$4
+else #Exit on wrong usage
+    sendErr "Wrong sleepSecs usage!" $EX_SLEEP_SECS
+fi
+#pre-message %t
+if [[ "$_pre" ]]; then
+    #Replace %t with duration
+    _pre=${_pre//"%t"/$_dur}
+fi
+#Output handling
+case "$SBGUI" in
+    "zenity")
+        #Messages
+        if [ "$_pre" ]; then
+            _zenity_pre="$_pre"
+        else
+            _zenity_pre="Waiting $_dur seconds...\""
+        fi
+        if [ "$_post" ]; then
+            _zenity_post="$_post"
+        else
+            _zenity_post="Done. Continue."
+        fi
+        for(( _secs=$_dur; $_secs; $((_secs--)) )); do
+            echo $((100-$_secs*100/$_dur))
+            sleep 1
+        done | $ZENITY --progress --auto-close --no-cancel --text "$_zenity_pre"
+
+        exitOnErr $? $EX_CANCEL
+
+        #$ZENITY --info --text "$_zenity_post" & # Send post-message to background to be able to continue without user-interaction.
+        ;;
+    "*"|"cli")
+        if [ "$_pre" ]; then
+            echo "$_pre"
+        fi
+        #Loop
+        for (( _secs=$_dur; $_secs; $((_secs--)) )); do
+            #Check if message is set
+            if [[ "$_msg" ]]; then
+                #Replace %n with current seconds and echo
+                echo ${_msg//"%t"/$_secs}
+            fi
+            #Sleep one second
+            sleep 1
+        done
+        if [ "$_post" ]; then
+            echo "$_post"
+        fi
+        ;;
+esac
+}
+#Send Message to user via choose way (cli/zenity)
+#Args: message timeout
+#  message: message to send
+function sendMsg() {
+msg=$1
+timeout=$2
+case "$SBGUI" in
+    "zenity")
+        if [ "$timeout" ]; then
+            timeout="--timeout $timeout"
+        fi
+        $ZENITY --info --text "$msg" $timeout
+        if [ "$?" == 1 ]; then
+            exit $EX_CANCEL
+        fi
+        ;;
+    *|"cli")
+        echo $msg
+        ;;
+esac
+}
+#Send Error to user via choose way (cli/zenity)
+#Args: message exitCode
+#  message: Error message
+#  exitCode: If given, exit with give code after sending message
+function sendErr() {
+_msg=$1
+_exitCode=$2
+case "$SBGUI" in
+    "zenity")
+        $ZENITY --error --text "$_msg"
+        if [ "$?" == "1" ]; then
+            exit $EX_CANCEL
+        fi
+        ;;
+    *|"cli")
+        echo "ERR: $_msg"
+        ;;
+esac
+if [ "$_exitCode" ]; then
+    exit $_exitCode
+fi
+}
+#Exit if last command failed
+#args: lastExit exit
+#  lastExit: the exit code to check (e.g. $?)
+#  exit: exit code
+function exitOnErr() {
+_lastExit=$1
+_exit=$2
+if [ -z $_exit ]; then
+    _exit=1;
+fi
+if [ $_lastExit != 0 ]; then
+    exit $_exit
+fi
 }
 #Run
 case $1 in
@@ -234,6 +417,6 @@ case $1 in
         echo "kill: kill all instances of SecurStick"
         echo "help: display this."
         echo "ENVIRONMENT:"
-        echo "If \$SBPASSASK is set to 'zenity', a zenity gui will be used to ask for passphrase. Otherwise bash \`read\` will be used. (Needs zenity to be installed)"
+        echo "If \$SBGUI is set to 'zenity', a zenity gui will be used to ask for passphrase. Otherwise bash \`read\` will be used. (Needs zenity to be installed)"
 esac
 
