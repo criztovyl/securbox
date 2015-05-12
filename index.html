@@ -1,0 +1,316 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Securbox by criztovyl</title>
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script src="javascripts/respond.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <!--[if lt IE 8]>
+    <link rel="stylesheet" href="stylesheets/ie.css">
+    <![endif]-->
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+  </head>
+  <body>
+      <div id="header">
+        <nav>
+          <li class="fork"><a href="https://github.com/criztovyl/securbox">View On GitHub</a></li>
+          <li class="downloads"><a href="https://github.com/criztovyl/securbox/zipball/master">ZIP</a></li>
+          <li class="downloads"><a href="https://github.com/criztovyl/securbox/tarball/master">TAR</a></li>
+          <li class="title">DOWNLOADS</li>
+        </nav>
+      </div><!-- end header -->
+
+    <div class="wrapper">
+
+      <section>
+        <div id="title">
+          <h1>Securbox</h1>
+          <p>Wraps SecurStick for command line</p>
+          <hr>
+          <span class="credits left">Project maintained by <a href="https://github.com/criztovyl">criztovyl</a></span>
+          <span class="credits right">Hosted on GitHub Pages &mdash; Theme by <a href="https://twitter.com/michigangraham">mattgraham</a></span>
+        </div>
+
+        <h1>
+<a id="securbox---securstick-linux-wrapper" class="anchor" href="#securbox---securstick-linux-wrapper" aria-hidden="true"><span class="octicon octicon-link"></span></a>securbox - SecurStick Linux Wrapper</h1>
+
+<p>securbox is a wrapper program for SecurStick under Linux, written as a bash script.
+It's able to connect to your SecurStick via commandline, mount or unmount it and is able to set up the SecurStick Safe Zone.</p>
+
+<h1>
+<a id="requirements" class="anchor" href="#requirements" aria-hidden="true"><span class="octicon octicon-link"></span></a>Requirements</h1>
+
+<ul>
+<li>
+<code>davfs2</code> (<code>mount.davfs</code>) for mounting SecurStick webDAV share </li>
+<li>
+<code>awk</code> for get the address from output file (<code>awk</code> should be installed by default)</li>
+<li>
+<code>cURL</code> to get pages and <code>POST</code> password.</li>
+<li>
+<code>realpath</code> for getting absolute paths of the SecurBox home directory</li>
+<li>SecurStick</li>
+<li>Zenity can be used for asking for password by a GUI. (optimal)</li>
+</ul>
+
+<h1>
+<a id="prerequisites" class="anchor" href="#prerequisites" aria-hidden="true"><span class="octicon octicon-link"></span></a>Prerequisites</h1>
+
+<h2>
+<a id="packages" class="anchor" href="#packages" aria-hidden="true"><span class="octicon octicon-link"></span></a>Packages</h2>
+
+<p>Install davfs, realpath and cURL packages:</p>
+
+<pre><code>sudo apt-get install davfs2 realpath curl
+</code></pre>
+
+<p>Optional also install zenity:</p>
+
+<pre><code>sudo apt-get install zenity
+</code></pre>
+
+<h2>
+<a id="securstick" class="anchor" href="#securstick" aria-hidden="true"><span class="octicon octicon-link"></span></a>SecurStick</h2>
+
+<p>Go to <a href="http://www.withopf.com/tools/securstick/">SecurStick Homepage</a> and download SecurStick.</p>
+
+<h2>
+<a id="securbox" class="anchor" href="#securbox" aria-hidden="true"><span class="octicon octicon-link"></span></a>securbox</h2>
+
+<p>Clone this repository into a favourite directory  </p>
+
+<ul>
+<li>via SSH with <code>git clone git@github.com:criztovyl/securbox.git</code> or</li>
+<li>via HTTPS with <code>git clone https://github.com/criztovyl/securbox.git</code>
+</li>
+</ul>
+
+<h1>
+<a id="setup" class="anchor" href="#setup" aria-hidden="true"><span class="octicon octicon-link"></span></a>"Setup"</h1>
+
+<ul>
+<li>In these steps I use <code>vim</code>, if you don't want to use <code>vim</code>, replace it with <code>nano</code>.</li>
+<li>Choose a folder for your securbox (default is <code>.securbox</code> in the user's home directory)</li>
+<li>Extract SecurStick into it (if you only want to use it on Linux, take SecurStick-linux only)</li>
+<li>If you want to be able to start your securbox from every dir, include <code>securbox</code> into your PATH. (Add <code>export PATH=$PATH:/path/to/securbox-dir</code> to your <code>.bashrc</code>)<br>
+TODO: Multiple securboxes.</li>
+<li>Now you should add the securbox to fstab so that you can mount it as a normal user.
+
+<ul>
+<li>We're doing this by adding securbox to <code>fstab</code>, setting up the davfs2 secrets file, fixing a <code>mount.davfs</code> bug and adding the user to the <code>davfs2</code> group.</li>
+<li>Add <code>http://127.0.0.1:2000/X /media/securbox davfs user,noauto 0 0</code> to your <code>/etc/fstab</code> file (<code>sudo vim /etc/fstab</code>)<br>
+(you can use a different mounting point but then you have to change it also in the <code>securbox</code> file, same way as setting the home in the point below, but look into line 24 instead of 21 ;) )</li>
+<li>the SecurStick DAV is not secured with user and password so you can simply add no user and password to the DAV secrets file (<code>vim ~/.davfs2/secrets</code>): <code>/media/securbox                 ""            ""</code>
+</li>
+<li>There is a bug in mount.davfs when not mounting as a root user, telling you <code>program is not setuid root</code>. Fix this using <code>sudo chmod u+s /sbin/mount.davfs</code>
+</li>
+<li>Add your user to <code>davfs2</code> group: <code>sudo adduser $USER davfs2</code>
+</li>
+</ul>
+</li>
+<li>Open the <code>securbox</code> file and change the securbox home to the folder you've chosen in the first point (line 21; use <code>$HOME</code> instead of <code>~</code> to identify your home directory)</li>
+<li>Now you can use <code>securbox</code> :)</li>
+</ul>
+
+<h1>
+<a id="usage" class="anchor" href="#usage" aria-hidden="true"><span class="octicon octicon-link"></span></a>Usage</h1>
+
+<p>To start <code>securbox</code>, type</p>
+
+<pre><code> securbox start
+</code></pre>
+
+<p>into your command line. If you havn't set up your securbox, this will be done immediately as shown below.</p>
+
+<p>Meanwhile securbox will start but the script needs to wait some seconds (3) to let SecurStick start up. So the following output is normal:</p>
+
+<pre><code>Waiting for SecurStick startup...
+3 seconds remaining...
+2 seconds remaining...
+1 seconds remaining...
+Continue...
+</code></pre>
+
+<p>This will not happen every time because SecurStick maybe already running, as example if you entered the wrong password.
+Now set a password if you didn't yet:</p>
+
+<pre><code>Please set a new password for your securbox with at least 5 letters, both UPPER and lower case, at least one digit and at least one special character (like !,?,#).
+Enter password  : 
+Repeat password : 
+</code></pre>
+
+<p>If your passwords match and are strong enough, securbox will set up the Safe Zone and log in:</p>
+
+<pre><code>Please set a new password for your securbox with at least 5 letters, both UPPER and lower case, at least one digit and at least one special character (like !,?,#).
+Enter password  : 
+Repeat password : 
+Logged in :)
+Mounted.
+</code></pre>
+
+<p>Sometimes you will get the below messages. If you get them something went wrong. Kill securbox with <code>securbox kill</code> and then restart with <code>securbox start</code>.</p>
+
+<pre><code>/sbin/mount.davfs: connection timed out two times;
+trying one last time
+/sbin/mount.davfs: server temporarily unreachable;
+mounting anyway
+</code></pre>
+
+<p>Now you can use your securbox. Go! Go to work!<br>
+If you're finisched, you can close the securbox by typing</p>
+
+<pre><code>securbox stop
+</code></pre>
+
+<p>This will unmount your securbox and stop it. Maybe you will see <code>mount</code> waiting for synchronsation of the cache. Simply wait.</p>
+
+<pre><code>/sbin/umount.davfs: waiting while mount.davfs (pid 13987) synchronizes the cache .. OK
+</code></pre>
+
+<h1>
+<a id="troubleshooting" class="anchor" href="#troubleshooting" aria-hidden="true"><span class="octicon octicon-link"></span></a>Troubleshooting</h1>
+
+<p>If your files in the webDAV folder are not accessable, stop and kill securbox (with <code>securbox stop</code> and <code>securbox kill</code>) and try again.</p>
+
+<h1>
+<a id="meta" class="anchor" href="#meta" aria-hidden="true"><span class="octicon octicon-link"></span></a>Meta</h1>
+
+<h2>
+<a id="background" class="anchor" href="#background" aria-hidden="true"><span class="octicon octicon-link"></span></a>Background</h2>
+
+<p>I'm using SecurStick to carry my "top secrect" stuff with me in my Dropbox.</p>
+
+<p>The early time, I simply started the SecurStick with a ugly double-click (as if we wold be in Windows...) and then SecurStick mounts to Nautilus.</p>
+
+<p>After a while I wanted to access the data from SecurStick via command line. But mounted in Nautilus that doesn't work.</p>
+
+<p>Then I've searched for a possibility to mount the (web)DAV share and found davfs2. But it's very uncomfortable when you do this manually: First you have to open the FileManager, go to the SecurStick folder, double-click SecurStick, waiting the web browser to start, enter password, unmount from nautilus (neither it's unnecessery), open command line and mount.</p>
+
+<p>So I've written this script.</p>
+
+<h3>
+<a id="problems" class="anchor" href="#problems" aria-hidden="true"><span class="octicon octicon-link"></span></a>Problems</h3>
+
+<p>I've found no documentation about SecurStick command line usage so I search the hard-coded strings in the executable, as example how to disable nautilus mount and disable opening the browser. (Described at the end of the file) </p>
+
+<p>After that I found out, that you can't simply POST password and unlock SecurStick, you have to GET the index and the image first.</p>
+
+<h3>
+<a id="todo" class="anchor" href="#todo" aria-hidden="true"><span class="octicon octicon-link"></span></a>ToDo</h3>
+
+<ul>
+<li>PATH independency (?)</li>
+<li>multiple securboxes</li>
+<li>make useable off commandline (Zenity)</li>
+</ul>
+
+<h3>
+<a id="changelog" class="anchor" href="#changelog" aria-hidden="true"><span class="octicon octicon-link"></span></a>Changelog</h3>
+
+<ul>
+<li>18.03.2014
+
+<ul>
+<li>Bugfix: Dead SecurStick instance from PID-file is now detected correctly, previously death-check was traped inside file existance check. </li>
+<li>Improves zenity (development will be continued on zenity-dev branch soon)</li>
+</ul>
+</li>
+<li>13.02.2014
+
+<ul>
+<li>Improvements
+
+<ul>
+<li>Countdown while wait for SecurStick start</li>
+<li>Only single SecurStick/securbox instance can run (until multiple securboxes are supported)</li>
+</ul>
+</li>
+<li>Bugfix: PID wasn't read from PID-file.</li>
+<li>Fixes some indenting</li>
+<li>Adds the countdown as a function</li>
+</ul>
+</li>
+<li>08.02.2015
+
+<ul>
+<li>Improvement: Wait a moment to let SecurStick start</li>
+<li>Repair a mistake (<code>cat</code> PID-file before check if it exits)</li>
+<li>Improved README</li>
+</ul>
+</li>
+<li>21.12.2014 
+
+<ul>
+<li>Improvements
+
+<ul>
+<li>Safe Zone setup</li>
+<li>removes cURL progressess</li>
+<li>adds new lines after asking password</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>25.11.2014 Initiated</li>
+</ul>
+
+<h2>
+<a id="license" class="anchor" href="#license" aria-hidden="true"><span class="octicon octicon-link"></span></a>License</h2>
+
+<p>This Project is licensed under GPLv3 or newer. See gpl.txt for details.</p>
+
+<h2>
+<a id="author" class="anchor" href="#author" aria-hidden="true"><span class="octicon octicon-link"></span></a>Author</h2>
+
+<p>(c) 2014 Christoph "criztovyl" Schulz. <a href="mailto:ch.schulz@joinout.de">ch.schulz@joinout.de</a></p>
+
+<h2>
+<a id="links" class="anchor" href="#links" aria-hidden="true"><span class="octicon octicon-link"></span></a>Links</h2>
+
+<ul>
+<li><a href="https://github.com/criztovyl/securbox">GitHub Repo</a></li>
+<li><a href="https://github.com/criztovyl">GitHub Author</a></li>
+<li><a href="http://joinout.de">Author Website</a></li>
+<li><a href="http://criztovyl.joinout.de">Author Blog</a></li>
+<li>securbox Page (coming soon...maybe^^)</li>
+</ul>
+
+<h1>
+<a id="securstick-command-line-options" class="anchor" href="#securstick-command-line-options" aria-hidden="true"><span class="octicon octicon-link"></span></a>SecurStick Command line options</h1>
+
+<p>Here are the options I've found in SecurStick-linux. (Obvoious options are not described)<br>
+--Notice the colons, they're required--</p>
+
+<ul>
+<li>-NoBrowser</li>
+<li>-NoMount</li>
+<li>-R: (unknown)</li>
+<li>-ra (unknow)</li>
+<li>-ServerPort: (for webDAV server)</li>
+<li>-Drive: (Drive letter on windows, I think)</li>
+<li>-UsePW: (won't work with spaces)</li>
+<li>-FixHREF (unknown)</li>
+<li>-IgnoreSpotlight (unknown)</li>
+<li>-LockPause (unknown)</li>
+<li>-EnableIMS (unknown)</li>
+<li>-DisableIMS (unknown)</li>
+<li>-DisableUnsafePWCheck</li>
+<li>-DisableConsoleMinimize</li>
+<li>-Debug</li>
+<li>-NoUnzipWarning (?)</li>
+<li>-v (Version)</li>
+</ul>
+      </section>
+
+    </div>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+    
+  </body>
+</html>
