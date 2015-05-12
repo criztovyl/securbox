@@ -121,7 +121,6 @@ After that I found out, that you can't simply POST password and unlock SecurStic
  * make useable off commandline (Zenity)
 
 ###Changelog
-
  * 18.03.2014
    - Bugfix: Dead SecurStick instance from PID-file is now detected correctly, previously death-check was traped inside file existance check. 
    - Improves zenity (development will be continued on zenity-dev branch soon)
@@ -154,7 +153,7 @@ This Project is licensed under GPLv3 or newer. See gpl.txt for details.
 * [GitHub Author](https://github.com/criztovyl)
 * [Author Website](http://joinout.de)
 * [Author Blog](http://criztovyl.joinout.de)
-* securbox Page (coming soon...maybe^^)
+* [securbox Page](https://criztovyl.github.io/securbox)
 
 #SecurStick Command line options
 
