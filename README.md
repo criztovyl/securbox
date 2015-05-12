@@ -2,6 +2,8 @@
 securbox is a wrapper program for SecurStick under Linux, written as a bash script.
 It's able to connect to your SecurStick via commandline, mount or unmount it and is able to set up the SecurStick Safe Zone.
 
+*Also have a look onto the other branches (dev and state-of-work) :)*
+
 #Requirements
 * `davfs2` (`mount.davfs`) for mounting SecurStick webDAV share 
 * `awk` for get the address from output file (`awk` should be installed by default)
