@@ -42,16 +42,16 @@ SB_MOUNT_POINT=/media/securbox
 # Prerequisites
 #
 
-#Make paths absolute
+# Make paths absolute
 SBH=`realpath $SBH`
 SB_MOUNT_POINT=`realpath $SB_MOUNT_POINT`
 
-#Set output, respond and running files
+# Set output, respond and running files
 SSO=$SBH/.output
 RSP=$SBH/.response
 RNG=$SBH/.running
 
-#Create folders and files if not exists
+# Create folders and files if not exists
 if [ ! -d $SBH ]; then
     mkdir -p $SBH
 fi
@@ -65,12 +65,12 @@ if [ ! -f $RSP ]; then
     touch $RSP
 fi
 
-#Set commands
+# Set commands
 CURL="/usr/bin/curl -s"
 ZENITY="/usr/bin/zenity"
 GREP="/bin/grep"
 
-#Set exit codes
+# Set exit codes
 EX_ERR=1
 EX_CANCEL=2
 EX_WRONG_PW=3
@@ -81,10 +81,10 @@ EX_ALREADY_THERE=7
 EX_LINK_ERR=8
 EX_NO_INPUT=9
 
-#Defaults
-#Zenity dialog timeout
+# Defaults
+# Zenity dialog timeout
 [ -z "$ZENITY_TIMEOUT"] && ZENITY_TIMEOUT=2
-#SleepSecs default duration
+# SleepSecs default duration
 [ -z "$SB_SLEEPSECS_DEF_DUR" ] && SB_SLEEPSEC_DEF_DUR=3
 
 #Name constant
@@ -123,16 +123,11 @@ function startSO(){
 #  postprog: Program to run after mount (opt.)
 #  single: allow only one instance of pastprog. (via ps aux | grep "$postprog") (opt.)
 
-    #Default values
-    postprog=$SB_POSTPROG
-    single=$SB_POSTPROG_SINGLE
+    #If set, arguments overwrite defaults
+    [ "$1" ] || [ -z "$postprog" ] && postprog=$1 || postprog=$SB_POSTPROG
+    [ "$2" ] || [ -z "$single" ] && single=$2 || single=$SB_POSTPROG_SINGLE
 
-    echo "Single" $single
-    echo "PostProg" $postprog
-
-    #If defaults are not set, use arguments
-    [ -z "$postprog" ] && postprog=$1
-    [ -z "$single" ] && single=$2
+    [ "$single" == "1" ] && single=1 || single=0
 
     #Check if securbox is already mounted
     if [ `mount | $GREP /media/securbox | wc -l` -ge 1 ]; then
@@ -193,9 +188,11 @@ function startSO(){
            sendMsg "Logged in:)"
            # mount securbox
            mount $SB_MOUNT_POINT
-           sendMsg "Mounted." "notify"
+           mountMsg="Mounted"
+           [ "$postprog" ] && mountMsg=$mountMsg", starting "$postprog"..."
+           sendMsg "$mountMsg" "notify"
            #Run postprog
-           [ "$single" == "1" ] && [ `ps aux | $GREP $postprog | wc -l` -lt 2 ] || [ "$single" != "1" ] && $postprog
+           [ "$single" == "0" ] || [ `ps aux | $GREP "$postprog" | wc -l` -lt 2 ] && $postprog || sendMsg "Post-Prog runs already."
        else
            sendErr "Can't unlock, maybe wrong password?" $EX_WRONG_PW
        fi
@@ -321,11 +318,11 @@ function stopSO(){
 
     getlink _link
     # unmount securbox if is mounted
-    [ `mount | $GREP $SB_MOUNT_POINT | wc -l ` -gt 0 ] && umount $SB_MOUNT_POINT || echo "securbox is not mounted :)"
+    [ `mount | $GREP $SB_MOUNT_POINT | wc -l ` -gt 0 ] && umount $SB_MOUNT_POINT || sendMsg "Securbox is not mounted :)"
     $CURL ${_link/login/"stop"} > /dev/null # stop securbox
     rm -f $RSP $RNG $SSO
     sendMsg "Stopped."
-    [ `ps aux | $GREP SecurStick | wc -l ` -gt 2 ] && echo "There are other SecurStick instances running, maybe you should kill them with \`securbox kill'"
+    [ `ps aux | $GREP SecurStick | wc -l ` -gt 2 ] && sendMsg "There are other SecurStick instances running, maybe you should kill them with \`securbox kill'"
 }
 function checkCreate(){
 #check if need to create Safe Zone
@@ -498,7 +495,7 @@ function act() {
             killSO
             ;;
         "$_start")
-            _args=$@ #for substitution
+            read -a args <<<"$@"
             startSO ${args[@]:1}
             ;;
         "$_stop")
