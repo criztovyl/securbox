@@ -86,6 +86,10 @@ EX_NO_INPUT=9
 [ -z "$ZENITY_TIMEOUT"] && ZENITY_TIMEOUT=2
 # SleepSecs default duration
 [ -z "$SB_SLEEPSECS_DEF_DUR" ] && SB_SLEEPSEC_DEF_DUR=3
+# do not require post-program single instance
+[ -z "$SB_POSTPROG_SINGLE" ] && SB_POSTPROG_SINGLE=0
+# don't have a default post program.
+#SB_POSTPROG=
 
 #Name constant
 SAFEZONE="safezone"
@@ -124,8 +128,8 @@ function startSO(){
 #  single: allow only one instance of pastprog. (via ps aux | grep "$postprog") (opt.)
 
     #If set, arguments overwrite defaults
-    [ "$1" ] || [ -z "$postprog" ] && postprog=$1 || postprog=$SB_POSTPROG
-    [ "$2" ] || [ -z "$single" ] && single=$2 || single=$SB_POSTPROG_SINGLE
+    [ "$1" ] && postprog=$1 || postprog=$SB_POSTPROG
+    [ "$2" ] && single=$2 || single=$SB_POSTPROG_SINGLE
 
     [ "$single" == "1" ] && single=1 || single=0
 
@@ -192,7 +196,7 @@ function startSO(){
            [ "$postprog" ] && mountMsg=$mountMsg", starting "$postprog"..."
            sendMsg "$mountMsg" "notify"
            #Run postprog
-           [ "$single" == "0" ] || [ `ps aux | $GREP "$postprog" | wc -l` -lt 2 ] && $postprog || sendMsg "Post-Prog runs already."
+           [ "$single" == "0" ] || [ `ps aux | $GREP "$postprog" | wc -l` -le 2 ] && $postprog || sendMsg "Post-Prog runs already."
        else
            sendErr "Can't unlock, maybe wrong password?" $EX_WRONG_PW
        fi
