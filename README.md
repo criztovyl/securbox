@@ -3,7 +3,7 @@ securbox is a wrapper program for SecurStick under Linux, written as a bash scri
 It's able to connect to your SecurStick via commandline or `zenity`, mount or unmount it and is able to set up the SecurStick Safe Zone.
 
 #Requirements
-* `davfs2` (`mount.davfs`) for mounting SecurStick webDAV share 
+* `davfs2` (`mount.davfs`) for mounting SecurStick webDAV share
 * `awk` for get the address from output file (`awk` should be installed by default)
 * `cURL` to get pages and `POST` password.
 * `realpath` for getting absolute paths of the SecurBox home directory
@@ -25,21 +25,20 @@ Optional also install zenity:
 Go to [SecurStick Homepage](http://www.withopf.com/tools/securstick/) and download SecurStick.
 
 ##securbox
-Clone this repository into a favourite directory  
+Clone this repository into a favourite directory.
 
-* via SSH with `git clone git@github.com:criztovyl/securbox.git` or
+* via SSH with `git clone git@github.com:criztovyl/securbox.git`
 * via HTTPS with `git clone https://github.com/criztovyl/securbox.git`
-
 
 #"Setup"
  * In these steps I use `vim`, if you don't want to use `vim`, replace it with `nano`.
  * Choose a folder for your securbox (default is `.securbox` in the user's home directory)
  * Extract SecurStick into it (if you only want to use it on Linux, take SecurStick-linux only)
- * If you want to be able to start your securbox from every dir, include `securbox` into your PATH. (Add `export PATH=$PATH:/path/to/securbox-dir` to your `.bashrc`)  
+ * If you want to be able to start your securbox from every dir, include `securbox` into your PATH. (Add `export PATH=$PATH:/path/to/securbox-dir` to your `.bashrc`)
    TODO: Multiple securboxes.
  * Now you should add the securbox to fstab so that you can mount it as a normal user.
    - We're doing this by adding securbox to `fstab`, setting up the davfs2 secrets file, fixing a `mount.davfs` bug and adding the user to the `davfs2` group.
-   - Add `http://127.0.0.1:2000/X /media/securbox davfs user,noauto 0 0` to your `/etc/fstab` file (`sudo vim /etc/fstab`)  
+   - Add `http://127.0.0.1:2000/X /media/securbox davfs user,noauto 0 0` to your `/etc/fstab` file (`sudo vim /etc/fstab`)
    (you can use a different mounting point but then you have to change it also in the `securbox` file, same way as setting the home in the point below, but look into line 24 instead of 21 ;) )
    - the SecurStick DAV is not secured with user and password so you can simply add no user and password to the DAV secrets file (`vim ~/.davfs2/secrets`): `/media/securbox                 ""            ""`
    - There is a bug in mount.davfs when not mounting as a root user, telling you `program is not setuid root`. Fix this using `sudo chmod u+s /sbin/mount.davfs`
@@ -67,18 +66,18 @@ This will not happen every time because SecurStick maybe already running, as exa
 Now set a password if you didn't yet:
 
     Please set a new password for your securbox with at least 5 letters, both UPPER and lower case, at least one digit and at least one special character (like !,?,#).
-    Enter password  : 
-    Repeat password : 
+    Enter password  :
+    Repeat password :
 
 If your passwords match and are strong enough, securbox will set up the Safe Zone and log in:
 
     Please set a new password for your securbox with at least 5 letters, both UPPER and lower case, at least one digit and at least one special character (like !,?,#).
-    Enter password  : 
-    Repeat password : 
+    Enter password  :
+    Repeat password :
     Logged in :)
     Mounted.
 
-Now you can use your securbox. Go! Go to work!  
+Now you can use your securbox. Go! Go to work!
 If you're finisched, you can close the securbox by typing
 
     securbox stop
@@ -97,10 +96,10 @@ This will unmount your securbox and stop it. Maybe you will see `mount` waiting 
  * Silence (SecurStick decrypts files; ToDo: status message)
  * Login OK
  * Mount OK
- 
+
 #Troubleshooting
 
-*Should be solved with the version of the 28th of April 2015, if not please open a issue.*  
+*Should be solved with the version of the 28th of April 2015, if not please open an issue.*
 If your files in the webDAV folder are not accessable, stop and kill securbox (with `securbox stop` and `securbox kill`) and try again.
 
 #Meta
@@ -117,7 +116,7 @@ Then I've searched for a possibility to mount the (web)DAV share and found davfs
 So I've written this script.
 
 ###Problems
-I've found no documentation about SecurStick command line usage so I search the hard-coded strings in the executable, as example how to disable nautilus mount and disable opening the browser. (Described at the end of the file) 
+I've found no documentation about SecurStick command line usage so I search the hard-coded strings in the executable, as example how to disable nautilus mount and disable opening the browser. (Described at the end of the file)
 
 After that I found out, that you can't simply POST password and unlock SecurStick, you have to GET the index and the image first.
 
@@ -128,31 +127,7 @@ After that I found out, that you can't simply POST password and unlock SecurStic
 
 ###Changelog
 
- * 28.04.2015
-   - Final "Mounting Failed 403 Forbidden 'Fix'"
-     + securbox can only be mounted if SecurStick address is 127.0.0.1.
-   - Includes Zenity
-   - Code improvements
- * 18.03.2015
-   - Bugfix: Dead SecurStick instance from PID-file is now detected correctly, previously death-check was traped inside file existance check. 
-   - Improves zenity (continued on dev branch)
- * 13.02.2014
-   - Improvements
-      + Countdown while wait for SecurStick start
-      + Only single SecurStick/securbox instance can run (until multiple securboxes are supported)
-   - Bugfix: PID wasn't read from PID-file.
-   - Fixes some indenting
-   - Adds the countdown as a function
- * 08.02.2015
-   - Improvement: Wait a moment to let SecurStick start
-   - Repair a mistake (`cat` PID-file before check if it exits)
-   - Improved README
- * 21.12.2014 
-   - Improvements
-     + Safe Zone setup
-     + removes cURL progressess
-     + adds new lines after asking password
- * 25.11.2014 Initiated
+Please take a look on the [commit history](https://github.com/criztovyl/securbox/commits). Also take a look on the development branch dev and state-of-work branch for the most recent changes. State-of-work branch is for experiments and is mostly untested.
 
 ##License
 This Project is licensed under GPLv3 or newer. See gpl.txt for details.
@@ -169,7 +144,7 @@ This Project is licensed under GPLv3 or newer. See gpl.txt for details.
 
 #SecurStick Command line options
 
-Here are the options I've found in SecurStick-linux. (Obvoious options are not described)  
+Here are the options I've found in SecurStick-linux. (Obvoious options are not described)
 --Notice the colons, they're required--
 
 * -NoBrowser
