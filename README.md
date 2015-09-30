@@ -1,6 +1,6 @@
 #securbox - SecurStick Linux Wrapper
 securbox is a wrapper program for SecurStick under Linux, written as a bash script.
-It's able to connect to your SecurStick via commandline, mount or unmount it and is able to set up the SecurStick Safe Zone.
+It's able to connect to your SecurStick via commandline or `zenity`, mount or unmount it and is able to set up the SecurStick Safe Zone.
 
 #Requirements
 * `davfs2` (`mount.davfs`) for mounting SecurStick webDAV share 
@@ -48,6 +48,7 @@ Clone this repository into a favourite directory
  * Now you can use `securbox` :)
 
 #Usage
+##CLI
  To start `securbox`, type
 
      securbox start
@@ -77,13 +78,6 @@ If your passwords match and are strong enough, securbox will set up the Safe Zon
     Logged in :)
     Mounted.
 
-Sometimes you will get the below messages. If you get them something went wrong. Kill securbox with `securbox kill` and then restart with `securbox start`.
-
-    /sbin/mount.davfs: connection timed out two times;
-    trying one last time
-    /sbin/mount.davfs: server temporarily unreachable;
-    mounting anyway
-
 Now you can use your securbox. Go! Go to work!  
 If you're finisched, you can close the securbox by typing
 
@@ -93,8 +87,20 @@ This will unmount your securbox and stop it. Maybe you will see `mount` waiting 
 
     /sbin/umount.davfs: waiting while mount.davfs (pid 13987) synchronizes the cache .. OK
 
+##GUI
+*TODO (will use GitHub pages, for images :) )*
+
+ * Info boxes have timeout of 2 secs
+ * Reminder if securbox is already there
+ * Wait for startup
+ * Enter or set password
+ * Silence (SecurStick decrypts files; ToDo: status message)
+ * Login OK
+ * Mount OK
+ 
 #Troubleshooting
 
+*Should be solved with the version of the 28th of April 2015, if not please open a issue.*  
 If your files in the webDAV folder are not accessable, stop and kill securbox (with `securbox stop` and `securbox kill`) and try again.
 
 #Meta
@@ -116,15 +122,20 @@ I've found no documentation about SecurStick command line usage so I search the 
 After that I found out, that you can't simply POST password and unlock SecurStick, you have to GET the index and the image first.
 
 ###ToDo
- * PATH independency (?)
  * multiple securboxes
- * make useable off commandline (Zenity)
+ * zenity start/stop/kill handling
+ * run a program after successful mount
 
 ###Changelog
 
- * 18.03.2014
+ * 28.04.2015
+   - Final "Mounting Failed 403 Forbidden 'Fix'"
+     + securbox can only be mounted if SecurStick address is 127.0.0.1.
+   - Includes Zenity
+   - Code improvements
+ * 18.03.2015
    - Bugfix: Dead SecurStick instance from PID-file is now detected correctly, previously death-check was traped inside file existance check. 
-   - Improves zenity (development will be continued on zenity-dev branch soon)
+   - Improves zenity (continued on dev branch)
  * 13.02.2014
    - Improvements
       + Countdown while wait for SecurStick start
@@ -154,7 +165,7 @@ This Project is licensed under GPLv3 or newer. See gpl.txt for details.
 * [GitHub Author](https://github.com/criztovyl)
 * [Author Website](http://joinout.de)
 * [Author Blog](http://criztovyl.joinout.de)
-* securbox Page (coming soon...maybe^^)
+* securbox Page (GitHub Page work in progress)
 
 #SecurStick Command line options
 
