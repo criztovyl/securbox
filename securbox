@@ -187,7 +187,7 @@ function startSO(){
        unblock $link
        unlock success "$pass" $link
        # mount only if unlocking was successfull
-       if [ $success == 0 ]; then
+       if [ "$success" == "0" ]; then
            sendMsg "Logged in:)"
            # mount securbox
            mount $SB_MOUNT_POINT
@@ -313,8 +313,7 @@ function unlock(){
     _pass=$2
     _link=$3
     $CURL --data-urlencode "P=$_pass" "$_link""2" -o $RSP # send pass
-    status=`cat $RSP`
-    [ "${status:32:19}" = "Safe Zone logged in" ] && eval $_statusvar=0 || eval $_statusvar=1
+    [ `cat $RSP | grep "${_link/login/X}" -ao | wc -l` -eq 3 ] && eval $_statusvar=0 || eval $_statusvar=1
 }
 
 function stopSO(){
