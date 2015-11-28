@@ -24,11 +24,13 @@ installSB()
     [ "$1" == 1 ] && install_zenity="zenity"
     [ "$2" == 1 ] && SUDO="" || SUDO="sudo"
     [ "$3" == "-" ] && read -p "Enter securbox home directory [$HOME/.securbox]: " SBDD
-    [ -z "$3" ] && SBDD=$DEFAULT_SB_MOUNT_POINT
+    [ -z "$3" ] && SBDD=$DEFAULT_SBDD
 
     # securbox mount point
     SB_MOUNT_POINT=`cat securbox | grep "SB_MOUNT_POINT=[^\\\`]" |sed "s/SB_MOUNT_POINT=\(.\+\)/\1/"`
     [ -z "$SB_MOUNT_POINT" ] && SB_MOUNT_POINT=$DEFAULT_SB_MOUNT_POINT
+
+    [ ! -d "$SB_MOUNT_POINT" ] && $SUDO mkdir -p $SB_MOUNT_POINT
 
     ##
     # Get Securstick download link
@@ -55,7 +57,7 @@ installSB()
     $SUDO chmod u+s /sbin/mount.davfs
 
     # Add user to davfs group
-    $SUDO adduser $user davfs2
+    $SUDO adduser $USERNAME davfs2
 
     # Add "secrets" to davfs secrets file
     secretsFile="~/.davfs2/secrets"
@@ -64,9 +66,10 @@ installSB()
 
     # Get a temporary directory
     tmp=`mktemp -d`
+    mkdir -p $tmp
 
     # Download SecurStick and put into temporary directory
-    $CURL "$sest_dl" | tar -x -C $tmp
+    curl "$sest_dl" | tar -x -C $tmp
 
     # Create securbox home
     mkdir -p "$SBDD"
