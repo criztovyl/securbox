@@ -47,6 +47,7 @@ installSB()
     # Convert and extract download link
     dl_link=`echo $page | iconv -f $charset | grep "SecurStick-linux-[[:digit:]]*\.tar" -o`
 
+    sest_dl="$page$dl_link"
     #
     ##
 
