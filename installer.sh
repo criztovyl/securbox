@@ -26,11 +26,14 @@ installSB()
     [ "$3" == "-" ] && read -p "Enter securbox home directory [$HOME/.securbox]: " SBDD
     [ -z "$3" ] && SBDD=$DEFAULT_SBDD
 
+    [ -z "$USERNAME" ] && USERNAME=$USER
+
     # securbox mount point
     SB_MOUNT_POINT=`cat securbox | grep "SB_MOUNT_POINT=[^\\\`]" |sed "s/SB_MOUNT_POINT=\(.\+\)/\1/"`
     [ -z "$SB_MOUNT_POINT" ] && SB_MOUNT_POINT=$DEFAULT_SB_MOUNT_POINT
 
     [ ! -d "$SB_MOUNT_POINT" ] && $SUDO mkdir -p $SB_MOUNT_POINT
+
 
     ##
     # Get Securstick download link
