@@ -38,8 +38,10 @@ installSB()
     ##
     # Get Securstick download link
 
+    # Page URL
+    page_url="http://www.withopf.com/tools/securstick/"
     # Download page
-    page=`curl -s "http://www.withopf.com/tools/securstick/"`
+    page=`curl -s "$page_url"`
 
     # Determine character encoding
     charset=`echo $page | file - --mime-encoding -b`
@@ -47,7 +49,8 @@ installSB()
     # Convert and extract download link
     dl_link=`echo $page | iconv -f $charset | grep "SecurStick-linux-[[:digit:]]*\.tar" -o`
 
-    sest_dl="$page$dl_link"
+    sest_dl="$page_url$dl_link"
+
     #
     ##
 
